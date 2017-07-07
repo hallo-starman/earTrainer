@@ -1,4 +1,8 @@
+// compile with `pkg-config --cflags --libs gstreamer-1.0`
+
 #include <vector>
+#include <gst/gst.h>
+#include <cstring>
 #include <iostream> 
 #include <string>
 #include <dirent.h>
@@ -6,7 +10,6 @@
 #include <algorithm>
 using namespace std;
 
-//#include <libglademm.h> 
 
 // a chord has a location and a name
 struct chord
@@ -28,9 +31,10 @@ class earTrainer
 		struct chord current;
 		int num;
 		vector<chord> chords;
-		// plays the chord for the user
-		void playChord(chord curr);
-		
+		int numCorrect;
+		struct chord selected;
+		int totalChords = 14;
+
 	vector<chord> getChordList()
 	{
 		//first, get the name of each file in chord directory
@@ -86,8 +90,10 @@ class earTrainer
 
 	}
 
+	// checks if guess matches the current chord
 	bool isCorrect(string choice)
-	{
+	{	
+		// if user enters lowercase, this changes to uppercase
 		if(islower(choice[0]))
 		{
 			choice[0] = toupper(choice[0]);
@@ -96,56 +102,42 @@ class earTrainer
 		if(choice == current.name)
 			return true;
 		return false;
-		
+	}
 
+	void eraseChords()
+	{
+		chords.erase(chords.begin(), chords.end());
+	}
+
+	string getCurrentPath()
+	{
+		return current.file;
+	}
+
+	// will initialize chord list
+	void run()
+	{
+		vector<chord> chordList;		
+		chordList = getChordList();
+		selected = getChord(chordList);
+		numCorrect = 0;
+	}
+
+	void playChord(string path)
+	{
+		GstElement *pipeline;
+		const char* partPath = "playbin uri=file:///home/shelby/Documents/projects/chordSamples/";
+		char resultPath[150];
+		strcpy(resultPath, partPath);
+		strcat(resultPath, path.c_str());
+		// gst_parse_launch takes a const char* in first parameter
+		// c_str() results in a const char*
+		// strcpy and strcat are used to concatenate the two 'strings'
+		pipeline = gst_parse_launch(resultPath, NULL);
+		gst_element_set_state(pipeline, GST_STATE_PLAYING);
+		cout << resultPath << endl;
 	}
 
 };
 
 
-int main(int argc, char *argv[])
-{
-
-	// initialize a vector of chords
-	vector<chord> chordList;
-	// instantiate an object
-	earTrainer start;
-	// assign chords to list
-	chordList = start.getChordList();
-	// number of correct guesses
-	int numCorrect = 0;
-
-	for(int i = 0; i < chordList.size(); i++)
-	{
-		cout << chordList.at(i).name << endl;
-
-	}
-		cout << chordList.size() << endl;
-	do
-	{
-		struct chord selected = start.getChord(chordList);
-		cout << selected.name << endl;
-
-		string guess;
-		cin >> guess;
-		if(start.isCorrect(guess))
-		{
-			// user has guessed correctly
-			numCorrect++;
-			cout << "you are correct" << endl;
-			chordList.erase(find(chordList.begin(), chordList.end(), selected));
-			for(int i = 0; i < chordList.size(); i++)
-			{
-				cout << chordList.at(i).name << endl;
-
-			}
-				cout << chordList.size() << endl;
-
-		}
-		else
-			cout << "You're wrong " << endl;
-	
-	} while (chordList.size() > 0);
-
-
-}
